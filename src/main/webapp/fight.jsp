@@ -328,7 +328,7 @@ opacity
 				<div class="card card-glass h-100">
 					<div
 						class="card-header border-0 d-flex justify-content-between align-items-center">
-						<h3 class="text-white fw-semibold m-0">Player 1</h3>
+						<h3 class="text-white fw-semibold m-0"><%=player1Name %></h3>
 						<span class="stat-pill">Active #<%=Math.min(p1Index + 1, p1Cards.size())%></span>
 					</div>
 					<div class="card-body">
@@ -337,7 +337,7 @@ opacity
 							P1CardVO c = p1Cards.get(p1Index);
 							int hp = c.getP1CardHp();
 							int maxHp = c.getP1CardMaxHp();
-							int hpPercent = (int) ((double) hp / Math.max(1, maxHp) * 100);
+							int hpPercent = (int) (((double) hp / maxHp) * 100);
 						%>
 						<div class="d-flex flex-column align-items-center text-center">
 							<div class="symbol-240 mb-3">
@@ -351,7 +351,7 @@ opacity
 							</div>
 							<div class="w-100">
 								<div class="d-flex justify-content-between text-gray-300 small">
-									<span>HP</span><span id="p1-hp" class="text-white fw-bold"><%=hp%></span>
+									<span>HP</span><span id="p1-hp" class="text-white fw-bold"><%=maxHp%></span>
 								</div>
 								<div class="progress mt-1" role="progressbar" aria-valuemin="0"
 									aria-valuemax="<%=maxHp%>" aria-valuenow="<%=hp%>">
@@ -436,7 +436,7 @@ opacity
 				<div class="card card-glass h-100">
 					<div
 						class="card-header border-0 d-flex justify-content-between align-items-center">
-						<h3 class="text-white fw-semibold m-0">Player 2</h3>
+						<h3 class="text-white fw-semibold m-0"><%=player2Name %></h3>
 						<span class="stat-pill">Active #<%=Math.min(p2Index + 1, p2Cards.size())%></span>
 					</div>
 					<div class="card-body">
@@ -445,7 +445,7 @@ opacity
 							P2CardVO c2 = p2Cards.get(p2Index);
 							int hp2 = c2.getP2CardHp();
 							int maxHp2 = c2.getP2CardMaxHp();
-							int hpPercent2 = (int) ((double) hp2 / Math.max(1, maxHp2) * 100);
+							int hpPercent2 = (int) (((double) hp2 / maxHp2) * 100);
 						%>
 						<div class="d-flex flex-column align-items-center text-center">
 							<div class="symbol-240 mb-3">
@@ -459,7 +459,7 @@ opacity
 							</div>
 							<div class="w-100">
 								<div class="d-flex justify-content-between text-gray-300 small">
-									<span>HP</span><span id="p2-hp" class="text-white fw-bold"><%=hp2%></span>
+									<span>HP</span><span id="p2-hp" class="text-white fw-bold"><%=maxHp2%></span>
 								</div>
 								<div class="progress mt-1" role="progressbar" aria-valuemin="0"
 									aria-valuemax="<%=maxHp2%>" aria-valuenow="<%=hp2%>">

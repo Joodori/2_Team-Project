@@ -24,6 +24,7 @@
 
     try {
         p1Cards = gdao.getP1Cards(p1Name);
+        
         p2Cards = gdao.getP2Cards(p2Name);
         for(pj2.P1CardVO c : p1Cards) p1TotalHp += c.getP1CardHp();
         for(pj2.P2CardVO c : p2Cards) p2TotalHp += c.getP2CardHp();

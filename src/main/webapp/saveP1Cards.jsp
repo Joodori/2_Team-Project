@@ -14,6 +14,7 @@ if (names != null) {
     for (int i = 0; i < names.length; i++) {
         P1CardVO card = new P1CardVO();
         card.setP1_name(p1Name);
+        
         card.setP1CardName(names[i]);
         card.setP1CardAtt(Integer.parseInt(atts[i]));
         card.setP1CardHp(Integer.parseInt(hps[i]));
