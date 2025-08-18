@@ -71,6 +71,26 @@ public class ResultDAO {
 
 	    return penalty;
 	}
+	
+	// penaltyList에서 벌칙 나타내는 리스트
+	public List<PenaltyVO>showPenalty() throws Exception {
+	    List<PenaltyVO> pList = new ArrayList<PenaltyVO>();
+	    Connection conn = getConnection();
+	    String sql = "select * from penalty";
+	    PreparedStatement psmt = conn.prepareStatement(sql);
+	    ResultSet rs = psmt.executeQuery();
+	    
+	    while(rs.next()) {
+	    	PenaltyVO pvo = new PenaltyVO();
+	    	pvo.setId(rs.getInt("penalty_id"));
+	    	pvo.setDetail(rs.getString("penalty_detail"));
+	    	pList.add(pvo);
+	    }
+	    conn.close();
+	    return pList;
+	}
+	
+	
 	// 첫번째 화면(first.jsp)에서 전적확인 메소드
 	public static List<ResultVO> showRecord() throws Exception {
 		List<ResultVO> voList = new ArrayList<ResultVO>();
@@ -116,7 +136,8 @@ public class ResultDAO {
             // 이름이 유효하지 않으면 삽입하지 않음
             return;
         }
-Connection conn = getConnection();
+		
+		Connection conn = getConnection();
 		String sql = "insert into result(p1_name, p2_name) values(?,?)";
 		PreparedStatement psmt = conn.prepareStatement(sql);
 		psmt.setString(1, p1Name);
@@ -188,6 +209,23 @@ Connection conn = getConnection();
 	    conn.close();
 	    return result;
 	}
+	
+	
+	public static int getGameID(String p1Name, String p2Name) throws Exception {  // modified
+		Connection conn = getConnection();
+		String sql = "SELECT result_id FROM result where p1_name = ? and p2_name = ?";
+		PreparedStatement pstmt = conn.prepareStatement(sql);
+		pstmt.setString(1,p1Name);
+		pstmt.setString(2, p2Name);
+		ResultSet rs = pstmt.executeQuery();
+		int result = 0;
+		
+		if (rs.next()) {
+			result = rs.getInt(1);
+		}
+		return result;
+	}
+	
 	// DB연결 메소드
 	private static Connection getConnection() throws Exception {
 		Context initContext = new InitialContext();

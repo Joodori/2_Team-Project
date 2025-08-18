@@ -2,6 +2,7 @@
 <%
 request.setCharacterEncoding("UTF-8");
 
+Integer gameIDObj = (Integer) session.getAttribute("gameID"); // modified
 String p1Name = (String) session.getAttribute("p1Name");
 String[] names = request.getParameterValues("cardName");
 String[] atts = request.getParameterValues("cardAtt");
@@ -9,12 +10,15 @@ String[] hps = request.getParameterValues("cardHp");
 String[] details = request.getParameterValues("cardDetail");
 String[] imgPaths = request.getParameterValues("cardImgPath");
 
+int gameID = gameIDObj.intValue(); // modified
+
 List<P1CardVO> selectedCards = new ArrayList<>();
 if (names != null) {
     for (int i = 0; i < names.length; i++) {
         P1CardVO card = new P1CardVO();
-        card.setP1_name(p1Name);
         
+        card.setGameID(gameID);  // modified
+        card.setP1_name(p1Name);
         card.setP1CardName(names[i]);
         card.setP1CardAtt(Integer.parseInt(atts[i]));
         card.setP1CardHp(Integer.parseInt(hps[i]));
@@ -24,8 +28,8 @@ if (names != null) {
     }
 }
 
-GameDAO dao = new GameDAO();
-dao.insertP1Card(selectedCards);
+GameDAO dao = new GameDAO(); 
+dao.insertP1Card(selectedCards, gameID);  // modified
 
 response.sendRedirect("selectP2Card.jsp");
 %>

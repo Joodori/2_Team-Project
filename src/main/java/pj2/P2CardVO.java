@@ -1,13 +1,23 @@
 package pj2;
 
 public class P2CardVO {
-    private String p2_name;
+	
+	private int gameID; // modified
+	private String p2_name; 
     private String p2CardName;
     private int p2CardAtt;
     private int p2CardHp;
     private String p2Detail;
     private int p2CardMaxHp;
 	String imgPath; // 추가
+	
+	
+	public int getGameID() { // modified
+		return gameID;
+	}
+	public void setGameID(int gameID) {  // modified
+		this.gameID = gameID;
+	}
 	public String getP2_name() {
 		return p2_name;
 	}

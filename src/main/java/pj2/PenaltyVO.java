@@ -4,12 +4,6 @@ public class PenaltyVO {
 	String detail;
 	int id;
 
-	public PenaltyVO(int id, String detail) {
-		super();
-		this.id = id;
-		this.detail = detail;
-	}
-
 	public String getDetail() {
 		return detail;
 	}

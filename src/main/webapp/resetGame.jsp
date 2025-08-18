@@ -9,8 +9,11 @@
 <body>
 <%@ page import="pj2.GameDAO" %>
 <%
+Integer gameIDObj = (Integer) session.getAttribute("gameID");
+int gameID = gameIDObj.intValue();
+
 GameDAO dao = new GameDAO();
-dao.resetPlayerCardList();
+dao.resetPlayerCardList(gameID);
 session.invalidate();
 response.sendRedirect("first.jsp");
 %>

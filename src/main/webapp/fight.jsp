@@ -1,133 +1,187 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
-<%@ page
-	import="pj2.GameDAO, pj2.P1CardVO, pj2.P2CardVO, pj2.ResultDAO, java.util.List"%>
+<%@ page import="pj2.GameDAO, pj2.P1CardVO, pj2.P2CardVO, pj2.ResultDAO, java.util.List"%>
+
+<%!
+	// P1 카드가 살아있는지 체크
+	private boolean isP1CardAlive(List<P1CardVO> cards, int index) {
+		return (index < cards.size() && cards.get(index).getP1CardHp() > 0);
+	}
+
+	// P2 카드가 살아있는지 체크
+	private boolean isP2CardAlive(List<P2CardVO> cards, int index) {
+		return (index < cards.size() && cards.get(index).getP2CardHp() > 0);
+	}
+
+	// 죽었는지 여부는 살아있는 여부의 반대
+	private boolean isP1CardDead(List<P1CardVO> cards, int index) {
+		return !isP1CardAlive(cards, index);
+	}
+	private boolean isP2CardDead(List<P2CardVO> cards, int index) {
+		return !isP2CardAlive(cards, index);
+	}
+
+	// P1 살아있는 카드 수 반환
+	private long countAliveP1(List<P1CardVO> cards) {
+		return cards.stream().filter(x -> x.getP1CardHp() > 0).count();
+	}
+
+	// P2 살아있는 카드 수 반환
+	private long countAliveP2(List<P2CardVO> cards) {
+		return cards.stream().filter(x -> x.getP2CardHp() > 0).count();
+	}
+%>
 
 <%
-GameDAO dao = new GameDAO();
-ResultDAO rdao = new ResultDAO();
-String player1Name = (String) session.getAttribute("p1Name");
-String player2Name = (String) session.getAttribute("p2Name");
+	int gameID = (int) session.getAttribute("gameID");
 
-if (session.getAttribute("p1Cards") == null || session.getAttribute("p2Cards") == null) {
-	session.setAttribute("p1Cards", dao.getP1Cards(player1Name));
-	session.setAttribute("p2Cards", dao.getP2Cards(player2Name));
-	session.setAttribute("p1ActiveIndex", 0);
-	session.setAttribute("p2ActiveIndex", 0);
-	session.setAttribute("turn", "p1");
-	session.setAttribute("battleLog", "");
-	session.setAttribute("gameResultSaved", null);
-}
+	// DAO 객체 생성
+	GameDAO dao = new GameDAO();
+	ResultDAO rdao = new ResultDAO();
 
-List<P1CardVO> p1Cards = (List<P1CardVO>) session.getAttribute("p1Cards");
-List<P2CardVO> p2Cards = (List<P2CardVO>) session.getAttribute("p2Cards");
-int p1Index = (Integer) session.getAttribute("p1ActiveIndex");
-int p2Index = (Integer) session.getAttribute("p2ActiveIndex");
-String turn = (String) session.getAttribute("turn");
-String battleLog = (String) session.getAttribute("battleLog");
+	// 세션에서 플레이어 이름 가져오기
+	String player1Name = (String) session.getAttribute("p1Name");
+	String player2Name = (String) session.getAttribute("p2Name");
 
-boolean p1Alive = p1Cards.stream().anyMatch(c -> c.getP1CardHp() > 0);
-boolean p2Alive = p2Cards.stream().anyMatch(c -> c.getP2CardHp() > 0);
-boolean gameOver = !p1Alive || !p2Alive;
-
-String atk = request.getParameter("attack");
-
-if (atk != null && !gameOver) {
-	if ("p1".equals(turn)) {
-		P1CardVO p1Attacker = p1Cards.get(p1Index);
-		P2CardVO p2Defender = p2Cards.get(p2Index);
-		int dmg1 = p1Attacker.getP1CardAtt();
-		p2Defender.setP2CardHp(p2Defender.getP2CardHp() - dmg1);
-		battleLog += " P1의 " + p1Attacker.getP1CardName() + " → " + p2Defender.getP2CardName() + " : -" + dmg1
-		+ " HP<br>";
-		if (p2Defender.getP2CardHp() <= 0) {
-	p2Defender.setP2CardHp(0);
-	battleLog += p2Defender.getP2CardName() + " 쓰러짐!<br>";
-	p2Index++;
-	session.setAttribute("p2ActiveIndex", p2Index);
-		}
-		turn = "p2";
-	} else {
-		P2CardVO p2Attacker = p2Cards.get(p2Index);
-		P1CardVO p1Defender = p1Cards.get(p1Index);
-		int dmg2 = p2Attacker.getP2CardAtt();
-		p1Defender.setP1CardHp(p1Defender.getP1CardHp() - dmg2);
-		battleLog += " P2의 " + p2Attacker.getP2CardName() + " → " + p1Defender.getP1CardName() + " : -" + dmg2
-		+ " HP<br>";
-		if (p1Defender.getP1CardHp() <= 0) {
-	p1Defender.setP1CardHp(0);
-	battleLog += p1Defender.getP1CardName() + " 쓰러짐!<br>";
-	p1Index++;
-	session.setAttribute("p1ActiveIndex", p1Index);
-		}
-		turn = "p1";
-	}
-}
-
-p1Alive = p1Cards.stream().anyMatch(c -> c.getP1CardHp() > 0);
-p2Alive = p2Cards.stream().anyMatch(c -> c.getP2CardHp() > 0);
-gameOver = !p1Alive || !p2Alive;
-
-if (gameOver && session.getAttribute("gameResultSaved") == null) {
-	String p1Name = (String) session.getAttribute("p1Name");
-	String p2Name = (String) session.getAttribute("p2Name");
-
-	// 세션에 이름이 없다면 요청 파라미터에서도 한 번 더 시도
-	if (p1Name == null || p1Name.trim().isEmpty())
-		p1Name = request.getParameter("p1Name");
-	if (p2Name == null || p2Name.trim().isEmpty())
-		p2Name = request.getParameter("p2Name");
-	if (p1Name != null && !p1Name.trim().isEmpty())
-		session.setAttribute("p1Name", p1Name);
-	if (p2Name != null && !p2Name.trim().isEmpty())
-		session.setAttribute("p2Name", p2Name);
-	// 게임 시작시 addPlayers 한번 수행했는지 세션에서 체크 후 없으면 호출 (안전장치)
-	Object playersAdded = session.getAttribute("playersAdded");
-	if (playersAdded == null) {
-		ResultDAO.addPlayers(p1Name, p2Name);
-		session.setAttribute("playersAdded", true);
+	// 세션 초기화 (최초 실행 시 카드 리스트, 현재 인덱스, 턴, 로그 설정)
+	if (session.getAttribute("p1Cards") == null || session.getAttribute("p2Cards") == null) {
+		session.setAttribute("p1Cards", dao.getP1Cards(player1Name, gameID)); // modified
+		session.setAttribute("p2Cards", dao.getP2Cards(player2Name, gameID)); // modified
+		session.setAttribute("p1ActiveIndex", 0); // 현재 사용 중인 카드
+		session.setAttribute("p2ActiveIndex", 0);
+		session.setAttribute("turn", "p1");       // 첫 턴은 p1부터
+		session.setAttribute("battleLog", "");   // 전투 로그 초기화
+		session.setAttribute("gameResultSaved", null); // 결과 저장 여부
 	}
 
-	String winner = "무승부";
-	if (!p1Alive && p2Alive)
-		winner = p2Name;
-	else if (!p2Alive && p1Alive)
-		winner = p1Name;
+	// 세션에서 카드 및 상태 불러오기
+	List<P1CardVO> p1Cards = (List<P1CardVO>) session.getAttribute("p1Cards");
+	List<P2CardVO> p2Cards = (List<P2CardVO>) session.getAttribute("p2Cards");
+	int p1Index = (Integer) session.getAttribute("p1ActiveIndex");
+	int p2Index = (Integer) session.getAttribute("p2ActiveIndex");
+	String turn = (String) session.getAttribute("turn");
+	String battleLog = (String) session.getAttribute("battleLog");
 
-	String penalty = ResultDAO.getPenalty();
+	// 현재 카드 생존 여부 / 게임 종료 여부
+	boolean p1Alive = countAliveP1(p1Cards) > 0;
+	boolean p2Alive = countAliveP2(p2Cards) > 0;
+	boolean gameOver = !p1Alive || !p2Alive;
 
-	if (p1Name != null && p2Name != null && !p1Name.trim().isEmpty() && !p2Name.trim().isEmpty())
-		rdao.updateResult(p1Name, p2Name, winner, penalty);
+	// ================== 공격 처리 ==================
+	String atk = request.getParameter("attack");
+	if (atk != null && !gameOver) {
+		// P1 턴 → P1 공격
+		if ("p1".equals(turn) && isP1CardAlive(p1Cards, p1Index) && isP2CardAlive(p2Cards, p2Index)) {
+			P1CardVO attacker = p1Cards.get(p1Index);
+			P2CardVO defender = p2Cards.get(p2Index);
 
-	session.setAttribute("gameResultSaved", true);
-}
-// 교체 기능 
-String switchCard = request.getParameter("switchCard");
-if (switchCard != null && !gameOver) {
-	int switchIndex = Integer.parseInt(switchCard);
+			// 공격력 만큼 상대 HP 감소 (최소 0까지)
+			int dmg = attacker.getP1CardAtt();
+			defender.setP2CardHp(Math.max(0, defender.getP2CardHp() - dmg));
 
-	if ("p1".equals(turn)) {
-		if (switchIndex < p1Cards.size() && p1Cards.get(switchIndex).getP1CardHp() > 0) {
-	p1Index = switchIndex;
-	session.setAttribute("p1ActiveIndex", p1Index);
-	battleLog += "P1이 " + p1Cards.get(p1Index).getP1CardName() + " 카드를 교체했습니다.<br>";
-	// 교체만 하고 턴은 그대로 p1
+			// 전투 로그 기록
+			battleLog += "P1의 " + attacker.getP1CardName() + " → " + defender.getP2CardName() + " : -" + dmg + " HP<br>";
+
+			// 상대 카드 쓰러짐
+			if (defender.getP2CardHp() <= 0) {
+				battleLog += defender.getP2CardName() + " 쓰러짐!<br>";
+				p2Index++; // 다음 카드로 전환
+				session.setAttribute("p2ActiveIndex", p2Index);
+			}
+			turn = "p2"; // 턴 교체
 		}
-	} else if ("p2".equals(turn)) {
-		if (switchIndex < p2Cards.size() && p2Cards.get(switchIndex).getP2CardHp() > 0) {
-	p2Index = switchIndex;
-	session.setAttribute("p2ActiveIndex", p2Index);
-	battleLog += "P2가 " + p2Cards.get(p2Index).getP2CardName() + " 카드를 교체했습니다.<br>";
+		// P2 턴 → P2 공격
+		else if ("p2".equals(turn) && isP2CardAlive(p2Cards, p2Index) && isP1CardAlive(p1Cards, p1Index)) {
+			P2CardVO attacker = p2Cards.get(p2Index);
+			P1CardVO defender = p1Cards.get(p1Index);
+
+			int dmg = attacker.getP2CardAtt();
+			defender.setP1CardHp(Math.max(0, defender.getP1CardHp() - dmg));
+
+			battleLog += "P2의 " + attacker.getP2CardName() + " → " + defender.getP1CardName() + " : -" + dmg + " HP<br>";
+
+			if (defender.getP1CardHp() <= 0) {
+				battleLog += defender.getP1CardName() + " 쓰러짐!<br>";
+				p1Index++;
+				session.setAttribute("p1ActiveIndex", p1Index);
+			}
+			turn = "p1";
 		}
 	}
+
+	// 상태 갱신
+	p1Alive = countAliveP1(p1Cards) > 0;
+	p2Alive = countAliveP2(p2Cards) > 0;
+	gameOver = !p1Alive || !p2Alive;
+
+	// ================== 게임 종료 처리 ==================
+	if (gameOver && session.getAttribute("gameResultSaved") == null) {
+		String p1Name = (String) session.getAttribute("p1Name");
+		String p2Name = (String) session.getAttribute("p2Name");
+
+		// 이름 값 보정 (request에서 가져오기)
+		if (p1Name == null || p1Name.trim().isEmpty()) p1Name = request.getParameter("p1Name");
+		if (p2Name == null || p2Name.trim().isEmpty()) p2Name = request.getParameter("p2Name");
+
+		// 세션에 저장
+		if (p1Name != null && !p1Name.trim().isEmpty()) session.setAttribute("p1Name", p1Name);
+		if (p2Name != null && !p2Name.trim().isEmpty()) session.setAttribute("p2Name", p2Name);
+
+		// 플레이어 DB에 추가 (최초 1회만)
+		if (session.getAttribute("playersAdded") == null) {
+			ResultDAO.addPlayers(p1Name, p2Name);
+			session.setAttribute("playersAdded", true);
+		}
+
+		// 승자 판정
+		String winner = "무승부";
+		if (!p1Alive && p2Alive) winner = p2Name;
+		else if (!p2Alive && p1Alive) winner = p1Name;
+
+		// 패널티 조회
+		String penalty = ResultDAO.getPenalty();
+
+		// DB 결과 업데이트
+		if (p1Name != null && p2Name != null && !p1Name.trim().isEmpty() && !p2Name.trim().isEmpty()) {
+			rdao.updateResult(p1Name, p2Name, winner, penalty);
+		}
+
+		session.setAttribute("gameResultSaved", true); // 결과 저장 완료 표시
+	}
+
+	// ================== 카드 교체 처리 ==================
+	String switchCard = request.getParameter("switchCard");
+	if (switchCard != null && !gameOver) {
+		int switchIndex = Integer.parseInt(switchCard);
+
+
+		// P1 턴일 때 카드 교체
+		if ("p1".equals(turn) && isP1CardAlive(p1Cards, switchIndex)) {
+			p1Index = switchIndex;
+			session.setAttribute("p1ActiveIndex", p1Index);
+			battleLog += "P1이 " + p1Cards.get(p1Index).getP1CardName() + " 카드를 교체했습니다.<br>";
+			turn = "p2";
+		}
+		// P2 턴일 때 카드 교체
+		else if ("p2".equals(turn) && isP2CardAlive(p2Cards, switchIndex)) {
+			p2Index = switchIndex;
+			session.setAttribute("p2ActiveIndex", p2Index);
+			battleLog += "P2가 " + p2Cards.get(p2Index).getP2CardName() + " 카드를 교체했습니다.<br>";
+			turn = "p1";
+		}
+	}
+
+
+	// 세션 값 최종 갱신
+	session.setAttribute("p1Cards", p1Cards);
+	session.setAttribute("p2Cards", p2Cards);
 	session.setAttribute("battleLog", battleLog);
-}
-
-session.setAttribute("battleLog", battleLog);
-session.setAttribute("p1ActiveIndex", p1Index);
-session.setAttribute("p2ActiveIndex", p2Index);
-session.setAttribute("turn", turn);
+	session.setAttribute("p1ActiveIndex", p1Index);
+	session.setAttribute("p2ActiveIndex", p2Index);
+	session.setAttribute("turn", turn);
 %>
+
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -238,18 +292,50 @@ keyframes blink { 0%{
 }
 
 50
+
+
+
+
 %
 {
 opacity
+
+
+
+
 :
+
+
+
+
 0
+
+
+
+
 }
 100
+
+
+
+
 %
 {
 opacity
+
+
+
+
 :
+
+
+
+
 1
+
+
+
+
 }
 }
 .log-card {
@@ -313,280 +399,296 @@ opacity
 					</div>
 				</div>
 				<div class="text-end">
-					<div class="fs-2hx fw-bold text-white"><%=p1Cards.size()%>
+					<div class="fs-2hx fw-bold text-white"><%=p1Cards.stream().filter(c -> c.getP1CardHp() > 0).count()%>
 						:
-						<%=p2Cards.size()%></div>
-					<div class="text-gray-400">덱 카드 수</div>
+						<%=p2Cards.stream().filter(c -> c.getP2CardHp() > 0).count()%>
+					</div>
+						<div class="text-gray-400">덱 카드 수</div>
 				</div>
 			</div>
-		</div>
 
-		<!-- Duel Area -->
-		<div class="row g-4 align-items-stretch">
-			<!-- Player 1 -->
-			<div class="col-12 col-lg-5 duel-col">
-				<div class="card card-glass h-100">
-					<div
-						class="card-header border-0 d-flex justify-content-between align-items-center">
-						<h3 class="text-white fw-semibold m-0"><%=player1Name %></h3>
-						<span class="stat-pill">Active #<%=Math.min(p1Index + 1, p1Cards.size())%></span>
-					</div>
-					<div class="card-body">
-						<%
-						if (p1Cards.size() > p1Index) {
-							P1CardVO c = p1Cards.get(p1Index);
-							int hp = c.getP1CardHp();
-							int maxHp = c.getP1CardMaxHp();
-							int hpPercent = (int) (((double) hp / maxHp) * 100);
-						%>
-						<div class="d-flex flex-column align-items-center text-center">
-							<div class="symbol-240 mb-3">
-								<img src="/pj2/<%=p1Cards.get(p1Index).getImgPath()%>"
-									class="w-100 h-100" alt="active card p1" />
-							</div>
-							<h4 class="text-white fw-bold mb-1"><%=c.getP1CardName()%></h4>
-							<div class="d-flex gap-2 mb-3">
-								<span class="stat-pill">ATK <strong><%=c.getP1CardAtt()%></strong></span>
-								<span class="stat-pill">ROLE <strong><%=c.getP1Detail()%></strong></span>
-							</div>
-							<div class="w-100">
-								<div class="d-flex justify-content-between text-gray-300 small">
-									<span>HP</span><span id="p1-hp" class="text-white fw-bold"><%=maxHp%></span>
+			<!-- Duel Area -->
+			<div class="row g-4 align-items-stretch">
+				<!-- Player 1 -->
+				<div class="col-12 col-lg-5 duel-col">
+					<div class="card card-glass h-100">
+						<div
+							class="card-header border-0 d-flex justify-content-between align-items-center">
+							<h3 class="text-white fw-semibold m-0"><%=player1Name%></h3>
+							<span class="stat-pill">Active #<%=Math.min(p1Index + 1, p1Cards.size())%></span>
+						</div>
+						<div class="card-body">
+							<%
+							if (p1Cards.size() > p1Index) {
+								P1CardVO c = p1Cards.get(p1Index);
+								int hp = c.getP1CardHp();
+								int maxHp = c.getP1CardMaxHp();
+								int hpPercent = (int) (((double) hp / maxHp) * 100);
+							%>
+							<div class="d-flex flex-column align-items-center text-center">
+								<div class="symbol-240 mb-3">
+									<img src="/pj2/<%=p1Cards.get(p1Index).getImgPath()%>"
+										class="w-100 h-100" alt="active card p1" />
 								</div>
-								<div class="progress mt-1" role="progressbar" aria-valuemin="0"
-									aria-valuemax="<%=maxHp%>" aria-valuenow="<%=hp%>">
-									<div class="progress-bar bg-danger"
-										style="width:<%=hpPercent%>%;">
-										<%=hp%>
-										/
-										<%=maxHp%>
+								<h4 class="text-white fw-bold mb-1"><%=c.getP1CardName()%></h4>
+								<div class="d-flex gap-2 mb-3">
+									<span class="stat-pill">ATK <strong><%=c.getP1CardAtt()%></strong></span>
+									<span class="stat-pill">ROLE <strong><%=c.getP1Detail()%></strong></span>
+								</div>
+								<div class="w-100">
+									<div class="d-flex justify-content-between text-gray-300 small">
+										<span>HP</span><span id="p1-hp" class="text-white fw-bold"><%=maxHp%></span>
+									</div>
+									<div class="progress mt-1" role="progressbar" aria-valuemin="0"
+										aria-valuemax="<%=maxHp%>" aria-valuenow="<%=hp%>">
+										<div class="progress-bar bg-danger"
+											style="width:<%=hpPercent%>%;">
+											<%=hp%>
+											/
+											<%=maxHp%>
+										</div>
 									</div>
 								</div>
 							</div>
+							<%
+							} else {
+							%>
+							<%
+							long aliveCount1 = p1Cards.stream().filter(x -> x.getP1CardHp() > 0).count();
+							if (!gameOver && aliveCount1 > 0 && (p1Cards.size() <= p1Index || p1Cards.get(p1Index).getP1CardHp() <= 0)) {
+							%>
+							<div class="alert alert-warning border-0 fw-bold">교체할 카드를
+								선택해 주세요</div>
+							<%
+							} else {
+							%>
+							<div class="alert alert-dark border-0">활성 카드 없음</div>
+							<%
+							}
+							%>
+							<%
+							}
+							%>
 						</div>
-						<%
-						} else {
-						%>
-						<div class="alert alert-dark border-0">활성 카드 없음</div>
-						<%
-						}
-						%>
-					</div>
-					<div class="card-footer border-0 pt-0">
-						<%
-						if ("p1".equals(turn) && !gameOver && p1Cards.size() > p1Index) {
-						%>
-						<form method="post" class="m-0">
-							<button name="attack" value="p2" class="btn btn-attack w-100">공격하기</button>
-						</form>
-						<%
-						}
-						%>
-					</div>
+						<div class="card-footer border-0 pt-0">
+							<%
+							if ("p1".equals(turn) && !gameOver && p1Cards.size() > p1Index) {
+							%>
+							<form method="post" class="m-0">
+								<button name="attack" value="p2" class="btn btn-attack w-100">공격하기</button>
+							</form>
+							<%
+							}
+							%>
+						</div>
 
-					<!-- 보유 카드 -->
-					<div class="p-4 pt-0">
-						<h6 class="text-uppercase text-gray-400 mb-3">보유 카드</h6>
-						<div class="table-responsive">
-							<table class="table table-row-dashed align-middle gy-2">
-								<thead>
-									<tr>
-										<th>카드 이름</th>
-										<th>설명</th>
-									</tr>
-								</thead>
-								<tbody>
-									<%
-									for (int i = 0; i < p1Cards.size(); i++) {
-										P1CardVO c = p1Cards.get(i);
-										if (c.getP1CardHp() > 0) {
-									%>
-									<tr>
-										<td class="fw-semibold text-gray-300"><%=c.getP1CardName()%></td>
-										<td class="text-gray-300"><%=c.getP1Detail()%></td>
-										<td>
-											<%
-											if ("p1".equals(turn) && !gameOver && i != p1Index) {
-											%>
-											<form method="post" class="d-inline" action="fight.jsp">
-												<button type="submit" name="switchCard" value="<%=i%>"
-													class="btn btn-sm btn-secondary">교체</button>
-											</form> <% } %>
-										</td>
-									</tr>
-									<%
-									}
-									}
-									%>
-								</tbody>
-							</table>
+						<!-- 보유 카드 -->
+						<div class="p-4 pt-0">
+							<h6 class="text-uppercase text-gray-400 mb-3">보유 카드</h6>
+							<div class="table-responsive">
+								<table class="table table-row-dashed align-middle gy-2">
+									<thead>
+										<tr>
+											<th>카드 이름</th>
+											<th>설명</th>
+										</tr>
+									</thead>
+									<tbody>
+										<%
+										for (int i = 0; i < p1Cards.size(); i++) {
+											P1CardVO c = p1Cards.get(i);
+											if (c.getP1CardHp() > 0) {
+										%>
+										<tr>
+											<td class="fw-semibold text-gray-300"><%=c.getP1CardName()%></td>
+											<td class="text-gray-300"><%=c.getP1Detail()%></td>
+											<td>
+												<%
+												if ("p1".equals(turn) && !gameOver && i != p1Index) {
+												%>
+												<form method="post" class="d-inline" action="fight.jsp">
+													<button type="submit" name="switchCard" value="<%=i%>"
+														class="btn btn-sm btn-secondary">교체</button>
+												</form> <%
+ }
+ %>
+											</td>
+										</tr>
+										<%
+										}
+										}
+										%>
+									</tbody>
+								</table>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 
-			<!-- VS Badge -->
-			<div
-				class="col-12 col-lg-2 d-flex align-items-center justify-content-center">
-				<div class="vs-badge">VS</div>
-			</div>
+				<!-- VS Badge -->
+				<div
+					class="col-12 col-lg-2 d-flex align-items-center justify-content-center">
+					<div class="vs-badge">VS</div>
+				</div>
 
-			<!-- Player 2 -->
-			<div class="col-12 col-lg-5 duel-col">
-				<div class="card card-glass h-100">
-					<div
-						class="card-header border-0 d-flex justify-content-between align-items-center">
-						<h3 class="text-white fw-semibold m-0"><%=player2Name %></h3>
-						<span class="stat-pill">Active #<%=Math.min(p2Index + 1, p2Cards.size())%></span>
-					</div>
-					<div class="card-body">
-						<%
-						if (p2Cards.size() > p2Index) {
-							P2CardVO c2 = p2Cards.get(p2Index);
-							int hp2 = c2.getP2CardHp();
-							int maxHp2 = c2.getP2CardMaxHp();
-							int hpPercent2 = (int) (((double) hp2 / maxHp2) * 100);
-						%>
-						<div class="d-flex flex-column align-items-center text-center">
-							<div class="symbol-240 mb-3">
-								<img src="/pj2/<%=p2Cards.get(p2Index).getImgPath()%>"
-									class="w-100 h-100" alt="active card p2" />
-							</div>
-							<h4 class="text-white fw-bold mb-1"><%=c2.getP2CardName()%></h4>
-							<div class="d-flex gap-2 mb-3">
-								<span class="stat-pill">ATK <strong><%=c2.getP2CardAtt()%></strong></span>
-								<span class="stat-pill">ROLE <strong><%=c2.getP2Detail()%></strong></span>
-							</div>
-							<div class="w-100">
-								<div class="d-flex justify-content-between text-gray-300 small">
-									<span>HP</span><span id="p2-hp" class="text-white fw-bold"><%=maxHp2%></span>
+				<!-- Player 2 -->
+				<div class="col-12 col-lg-5 duel-col">
+					<div class="card card-glass h-100">
+						<div
+							class="card-header border-0 d-flex justify-content-between align-items-center">
+							<h3 class="text-white fw-semibold m-0"><%=player2Name%></h3>
+							<span class="stat-pill">Active #<%=Math.min(p2Index + 1, p2Cards.size())%></span>
+						</div>
+						<div class="card-body">
+							<%
+							if (p2Cards.size() > p2Index) {
+								P2CardVO c2 = p2Cards.get(p2Index);
+								int hp2 = c2.getP2CardHp();
+								int maxHp2 = c2.getP2CardMaxHp();
+								int hpPercent2 = (int) (((double) hp2 / maxHp2) * 100);
+							%>
+							<div class="d-flex flex-column align-items-center text-center">
+								<div class="symbol-240 mb-3">
+									<img src="/pj2/<%=p2Cards.get(p2Index).getImgPath()%>"
+										class="w-100 h-100" alt="active card p2" />
 								</div>
-								<div class="progress mt-1" role="progressbar" aria-valuemin="0"
-									aria-valuemax="<%=maxHp2%>" aria-valuenow="<%=hp2%>">
-									<div class="progress-bar bg-danger"
-										style="width:<%=hpPercent2%>%;">
-										<%=hp2%>
-										/
-										<%=maxHp2%>
+								<h4 class="text-white fw-bold mb-1"><%=c2.getP2CardName()%></h4>
+								<div class="d-flex gap-2 mb-3">
+									<span class="stat-pill">ATK <strong><%=c2.getP2CardAtt()%></strong></span>
+									<span class="stat-pill">ROLE <strong><%=c2.getP2Detail()%></strong></span>
+								</div>
+								<div class="w-100">
+									<div class="d-flex justify-content-between text-gray-300 small">
+										<span>HP</span><span id="p2-hp" class="text-white fw-bold"><%=maxHp2%></span>
+									</div>
+									<div class="progress mt-1" role="progressbar" aria-valuemin="0"
+										aria-valuemax="<%=maxHp2%>" aria-valuenow="<%=hp2%>">
+										<div class="progress-bar bg-danger"
+											style="width:<%=hpPercent2%>%;">
+											<%=hp2%>
+											/
+											<%=maxHp2%>
+										</div>
 									</div>
 								</div>
 							</div>
+							<%
+							} else {
+							%>
+							<%
+							long aliveCount1 = p1Cards.stream().filter(x -> x.getP1CardHp() > 0).count();
+							if (!gameOver && aliveCount1 > 0 && (p2Cards.size() <= p2Index || p2Cards.get(p2Index).getP2CardHp() <= 0)) {
+							%>
+							<div class="alert alert-warning border-0 fw-bold">교체할 카드를
+								선택해 주세요</div>
+							<%
+							} else {
+							%>
+							<div class="alert alert-dark border-0">활성 카드 없음</div>
+							<%
+							}
+							%>
+							<%
+							}
+							%>
 						</div>
+						<div class="card-footer border-0 pt-0">
+							<%
+							if ("p2".equals(turn) && !gameOver && p2Cards.size() > p2Index) {
+							%>
+							<form method="post" class="m-0">
+								<button name="attack" value="p1" class="btn btn-attack w-100">공격하기</button>
+							</form>
+							<%
+							}
+							%>
+						</div>
+
+						<!-- 보유 카드 -->
+						<div class="p-4 pt-0">
+							<h6 class="text-uppercase text-gray-400 mb-3">보유 카드</h6>
+							<div class="table-responsive">
+								<table class="table table-row-dashed align-middle gy-2">
+									<thead>
+										<tr>
+											<th>카드 이름</th>
+											<th>설명</th>
+										</tr>
+									</thead>
+									<tbody>
+										<%
+										for (int i = 0; i < p2Cards.size(); i++) {
+											P2CardVO c = p2Cards.get(i);
+											if (c.getP2CardHp() > 0) {
+										%>
+										<tr>
+											<td class="fw-semibold text-gray-300"><%=c.getP2CardName()%></td>
+											<td class="text-gray-300"><%=c.getP2Detail()%></td>
+											<td>
+												<%
+												if ("p2".equals(turn) && !gameOver && i != p2Index) {
+												%>
+												<form method="post" class="d-inline" action="fight.jsp">
+													<button type="submit" name="switchCard" value="<%=i%>"
+														class="btn btn-sm btn-secondary">교체</button>
+												</form> <%
+ }
+ %>
+											</td>
+										</tr>
+										<%
+										}
+										}
+										%>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<!-- Battle Log -->
+			<div class="log-card card mt-5">
+				<div class="card-header border-0">
+					<h3 class="text-white fw-semibold m-0">배틀 로그</h3>
+				</div>
+				<div class="card-body">
+					<div class="text-gray-200" id="battleLog">
+						<%=(battleLog == null || battleLog.isEmpty()) ? "시작하세요!" : battleLog%>
+					</div>
+				</div>
+			</div>
+
+			<!-- Sticky Actions -->
+			<div class="sticky-actions mt-4">
+				<div
+					class="container-main mx-auto py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+					<div class="text-gray-400">
+			
+					</div>
+					<div class="d-flex gap-2">
 						<%
-						} else {
+						if (gameOver) {
 						%>
-						<div class="alert alert-dark border-0">활성 카드 없음</div>
+						<a href="result.jsp" class="btn btn-primary fw-bold">결과 보기</a>
 						<%
 						}
 						%>
-					</div>
-					<div class="card-footer border-0 pt-0">
-						<%
-						if ("p2".equals(turn) && !gameOver && p2Cards.size() > p2Index) {
-						%>
-						<form method="post" class="m-0">
-							<button name="attack" value="p1" class="btn btn-attack w-100">공격하기</button>
-						</form>
-						<%
-						}
-						%>
-					</div>
-
-					<!-- 보유 카드 -->
-					<div class="p-4 pt-0">
-						<h6 class="text-uppercase text-gray-400 mb-3">보유 카드</h6>
-						<div class="table-responsive">
-							<table class="table table-row-dashed align-middle gy-2">
-								<thead>
-									<tr>
-										<th>카드 이름</th>
-										<th>설명</th>
-									</tr>
-								</thead>
-								<tbody>
-									<%
-									for (int i = 0; i < p2Cards.size(); i++) {
-										P2CardVO c = p2Cards.get(i);
-										if (c.getP2CardHp() > 0) {
-									%>
-									<tr>
-										<td class="fw-semibold text-gray-300"><%=c.getP2CardName()%></td>
-										<td class="text-gray-300"><%=c.getP2Detail()%></td>
-										<td>
-											<%
-											if ("p2".equals(turn) && !gameOver && i != p2Index) {
-											%>
-											<form method="post" class="d-inline" action="fight.jsp">
-												<button type="submit" name="switchCard" value="<%=i%>"
-													class="btn btn-sm btn-secondary">교체</button>
-											</form> <% } %>
-										</td>
-									</tr>
-									<%
-									}
-									}
-									%>
-								</tbody>
-							</table>
-						</div>
+					
 					</div>
 				</div>
 			</div>
 
 		</div>
 
-		<!-- Battle Log -->
-		<div class="log-card card mt-5">
-			<div class="card-header border-0">
-				<h3 class="text-white fw-semibold m-0">배틀 로그</h3>
-			</div>
-			<div class="card-body">
-				<div class="text-gray-200" id="battleLog">
-					<%=(battleLog == null || battleLog.isEmpty()) ? "시작하세요!" : battleLog%>
-				</div>
-			</div>
-		</div>
+		<!-- JS bundles -->
+		<script src="assets/plugins/global/plugins.bundle.js"></script>
+		<script src="assets/js/scripts.bundle.js"></script>
+		<script src="js/bootstrap.bundle.min.js"></script>
 
-		<!-- Sticky Actions -->
-		<div class="sticky-actions mt-4">
-			<div
-				class="container-main mx-auto py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-				<div class="text-gray-400">
-					상태:
-					<%
-				if (gameOver) {
-				%>
-					<span class="badge bg-danger">게임 종료</span>
-					<%
-					} else {
-					%>
-					<span class="badge bg-success">진행 중</span>
-					<%
-					}
-					%>
-				</div>
-				<div class="d-flex gap-2">
-					<%
-					if (gameOver) {
-					%>
-					<a href="result.jsp" class="btn btn-primary fw-bold">결과 보기</a>
-					<%
-					}
-					%>
-					<a href="fight.jsp?reset=1" class="btn btn-reset fw-semibold">다시
-						시작</a>
-				</div>
-			</div>
-		</div>
-
-	</div>
-
-	<!-- JS bundles -->
-	<script src="assets/plugins/global/plugins.bundle.js"></script>
-	<script src="assets/js/scripts.bundle.js"></script>
-	<script src="js/bootstrap.bundle.min.js"></script>
-
-	<script>
+		<script>
 $(function(){
   // 공격 버튼 클릭 시 HP 깜빡임(서버 포스트 전에 클래스 추가)
   $("button[name='attack']").on("click", function(){

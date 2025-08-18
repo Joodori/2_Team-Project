@@ -34,15 +34,13 @@
     
     String p1Name = request.getParameter("p1Name");
     String p2Name = request.getParameter("p2Name");
-
+    
     if (p1Name != null && !p1Name.trim().isEmpty() && p2Name != null && !p2Name.trim().isEmpty()) {
         // 진짜 입력값 세션 저장
+        System.out.println("P1Name ; " + p1Name + " p2name : " + p2Name);
         session.setAttribute("p1Name", p1Name);
         session.setAttribute("p2Name", p2Name);
-
-        // DB에 addPlayers로 초기 row 생성
-        ResultDAO.addPlayers(p1Name, p2Name);
-
+        ResultDAO.addPlayers(p1Name, p2Name);		
         response.sendRedirect("selectP1Card.jsp"); return;
     }
 %>
@@ -161,20 +159,14 @@
             </div>
             <div class="text-gray-400">누적 매치</div>
           </div>
-          <div class="vr opacity-25"></div>
-          <div class="text-end">
-            <div class="fs-2hx fw-bold text-white">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" class="me-1" style="vertical-align:-4px;"><path d="M15 17l-3-3-3 3V5h6v12zM5 19h14v2H5z"/></svg>
-              GO
-            </div>
-            <div class="text-gray-400">지금 시작</div>
-          </div>
         </div>
       </div>
     </div>
 
     <!-- ===== Form 영역 ===== -->
-    <form action="selectP1Card.jsp" name="form1" class="mb-5">
+    
+    <!-- form을 이용하여 자동으로 get방식으로 들어가게 함  -->
+    <form action="first.jsp" name="form1" class="mb-5">
       <div class="row g-4 align-items-stretch">
         <!-- Player 1 -->
         <div class="col-12 col-lg-5">
@@ -228,6 +220,7 @@
           </div>
         </div>
       </div>
+      
 
       <!-- 시작 버튼 -->
       <div class="text-center mt-5">
@@ -243,6 +236,16 @@
       </div>
     </form>
 
+      <div class="input-group">
+      	<input type="text" class="form-control form-control-lg bg-transparent text-white border-secondary-subtle"
+      			name="addPenalty" id="addPenalty" placeholder="벌칙테이블에 추가하세요 !">
+      	<button type="button" class="btn btn-start" onclick="addPenaltyList()">
+          추가하기
+        </button>
+        <form action="penaltyList.jsp">
+        <button type="submit" class="btn btn-start">벌칙 확인하기</button>
+        </form>
+      </div>
     <!-- ===== 전적 테이블 ===== -->
     <div class="card card-glass">
       <div class="card-header border-0 pt-4 pb-0">
@@ -300,18 +303,15 @@
   <script src="assets/plugins/global/plugins.bundle.js"></script>
   <script src="assets/js/scripts.bundle.js"></script>
   <script src="js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <script>
     // 현재 연도
     document.getElementById('year').textContent = new Date().getFullYear();
-
+	
+    const penalty = document.getElementById("addPenalty");
     const p1Name = document.getElementById("p1Name");
     const p2Name = document.getElementById("p2Name");
-
-    function shake(el) {
-      el.classList.add('animate__animated','animate__shakeX');
-      setTimeout(()=>el.classList.remove('animate__animated','animate__shakeX'), 700);
-    }
 
     function start() {
       const n1 = p1Name.value.trim();
@@ -319,10 +319,9 @@
 
       if (!n1 || !n2) {
         // Metronic 스타일 알림 (간단 alert 대체)
+        // 삼항 연산자 사용 &&이 모두 참이면 : 의 왼쪽부분 , 아니면 괄호에서 선택해서 사용
         const msg = !n1 && !n2 ? '두 플레이어의 이름을 입력하세요.' : (!n1 ? 'Player 1의 이름을 입력하세요.' : 'Player 2의 이름을 입력하세요.');
-        window.alert(msg); // 프로젝트에 SweetAlert 등 쓰신다면 여기서 교체 가능
-        if (!n1) shake(p1Name.closest('.player-card'));
-        if (!n2) shake(p2Name.closest('.player-card'));
+        window.alert(msg);
         return;
       }
 
@@ -330,9 +329,26 @@
       if (n1 === n2) {
         if (!confirm('두 플레이어 이름이 같습니다. 그대로 진행할까요?')) return;
       }
-
       document.form1.submit();
     }
+    
+    function addPenaltyList() {
+    	  const input = document.getElementById("addPenalty");
+    	  const penalty = input.value.trim();
+    	  if (!penalty) {
+    	    alert("벌칙 내용을 입력해주세요.");
+    	    return;
+    	  }
+    	  $.ajax({
+    	    url: 'addPenalty.jsp',
+    	    type: 'POST',
+    	    data: { penalty: penalty },
+    	    success: function(response) {
+    	      alert('벌칙이 추가되었습니다.');
+    	      input.value = ""; // 벌칙 추가되면 알림 + input값 비워놓기
+    	    }
+    	  });
+    	}
   </script>
 
   <!-- 선택: animate.css(있다면 살짝 흔들림 효과). 없다면 위 shake()는 무시 -->

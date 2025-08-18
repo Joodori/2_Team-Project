@@ -2,12 +2,15 @@
 <%
 request.setCharacterEncoding("UTF-8");
 
+Integer gameIDObj = (Integer) session.getAttribute("gameID"); // modified
 String p2Name = (String) session.getAttribute("p2Name");
 String[] names = request.getParameterValues("cardName");
 String[] atts = request.getParameterValues("cardAtt");
 String[] hps = request.getParameterValues("cardHp");
 String[] details = request.getParameterValues("cardDetail");
 String[] imgPaths = request.getParameterValues("cardImgPath");
+
+int gameID = gameIDObj.intValue(); // modified 
 
 List<P2CardVO> selectedCards = new ArrayList<>();
 if (names != null) {
@@ -25,7 +28,7 @@ if (names != null) {
 }
 
 GameDAO dao = new GameDAO();
-dao.insertP2Card(selectedCards);
+dao.insertP2Card(selectedCards, gameID); // modified
 
 response.sendRedirect("fight.jsp");
 %>
